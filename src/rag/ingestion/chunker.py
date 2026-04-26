@@ -5,6 +5,8 @@ that *works*: it doesn't respect semantics, but it's deterministic, predictable,
 and a good baseline before students explore smarter splitters.
 """
 
+# ruff: noqa: F401  -- imports become used once Workshop 2 is implemented.
+
 from __future__ import annotations
 
 from dataclasses import replace
@@ -44,41 +46,24 @@ class Chunker:
         Returns:
             All resulting chunks, in document → in-document order.
         """
-        chunks: list[Chunk] = []
-        for doc in documents:
-            chunks.extend(self._chunk_one(doc))
-        return chunks
+        # TODO Workshop 2:
+        # - For each document, call ``_chunk_one`` and accumulate the chunks.
+        # - Return the flat list.
+        raise NotImplementedError("Workshop 2: implement Chunker.chunk")
 
     def _chunk_one(self, doc: Document) -> list[Chunk]:
         """Chunk a single Document. Empty/whitespace docs return no chunks."""
-        text = doc.text or ""
-        if not text.strip():
-            return []
-
-        step = self.size - self.overlap
-        chunks: list[Chunk] = []
-        idx = 0
-        start = 0
-        n = len(text)
-        while start < n:
-            end = min(start + self.size, n)
-            piece = text[start:end].strip()
-            if piece:
-                meta = dict(doc.metadata)
-                meta.update({"chunk_index": idx, "char_start": start, "char_end": end})
-                chunks.append(
-                    Chunk(
-                        text=piece,
-                        source=doc.source,
-                        chunk_index=idx,
-                        metadata=meta,
-                    )
-                )
-                idx += 1
-            if end >= n:
-                break
-            start += step
-        return chunks
+        # TODO Workshop 2:
+        # - If the document text is empty/whitespace-only, return [].
+        # - Walk the text in steps of ``self.size - self.overlap``, slicing out
+        #   ``self.size``-character windows.
+        # - Strip each piece; skip empties.
+        # - For each kept piece, build a Chunk with:
+        #     * ``chunk_index`` increasing from 0
+        #     * metadata copied from the parent doc, plus
+        #       ``chunk_index``, ``char_start``, ``char_end``.
+        # - Stop when the slice reaches the end of the text.
+        raise NotImplementedError("Workshop 2: implement Chunker._chunk_one")
 
     @staticmethod
     def renumber(chunks: list[Chunk]) -> list[Chunk]:

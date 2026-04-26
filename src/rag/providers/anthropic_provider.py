@@ -1,8 +1,8 @@
 """Anthropic provider — Claude messages API.
 
-Anthropic does not (currently) provide a public embeddings endpoint, so this
-module exposes only an LLM. Combine with Gemini, OpenAI, or local embeddings
-if you choose Anthropic for generation.
+**Workshop 7 stretch.** Anthropic does not (currently) provide a public
+embeddings endpoint, so this module exposes only an LLM. Combine with Gemini,
+OpenAI, or local embeddings if you choose Anthropic for generation.
 """
 
 from __future__ import annotations
@@ -39,10 +39,10 @@ class AnthropicLLM:
             model: Override the model name. Falls back to ``settings.llm_model``
                 if it references a Claude model, otherwise ``claude-3-5-haiku-latest``.
         """
-        configured = (model or settings.llm_model or "").lower()
-        self.model = model or (
-            settings.llm_model if "claude" in configured else self._DEFAULT_MODEL
-        )
+        # TODO Workshop 7 (stretch):
+        # - Resolve the model name. If ``settings.llm_model`` references a Claude
+        #   model, use it; otherwise fall back to ``self._DEFAULT_MODEL``.
+        raise NotImplementedError("Workshop 7 stretch: implement AnthropicLLM.__init__")
 
     @cached_property
     def _anthropic_client(self):  # type: ignore[no-untyped-def]
@@ -57,17 +57,9 @@ class AnthropicLLM:
         max_tokens: int = 1024,
     ) -> str:
         """Generate a single response for ``prompt``."""
-        message = self._anthropic_client.messages.create(
-            model=self.model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        # ``message.content`` is a list of content blocks; for text-only prompts
-        # we expect a single TextBlock.
-        parts: list[str] = []
-        for block in message.content:
-            text = getattr(block, "text", None)
-            if text:
-                parts.append(text)
-        return "".join(parts).strip()
+        # TODO Workshop 7 (stretch):
+        # - Call ``self._anthropic_client.messages.create(model=..., max_tokens=...,
+        #     temperature=..., messages=[{"role": "user", "content": prompt}])``.
+        # - The returned ``message.content`` is a list of content blocks. Concatenate
+        #   the ``.text`` of each block and strip the result.
+        raise NotImplementedError("Workshop 7 stretch: implement AnthropicLLM.generate")

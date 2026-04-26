@@ -1,8 +1,9 @@
 """OpenAI provider — chat-completions LLM and ``text-embedding-3-small`` embeddings.
 
-Implementation parallels :mod:`rag.providers.gemini`. Used to demonstrate the
-provider abstraction in Workshop 7: switch ``LLM_PROVIDER=openai`` and the
-rest of the codebase keeps working unchanged.
+**Workshop 7 stretch.** Implementation parallels :mod:`rag.providers.gemini`.
+Implementing this proves the central pedagogical point of the codebase: once
+provider implementations satisfy the Protocols, swapping is a one-line .env
+change.
 """
 
 from __future__ import annotations
@@ -37,8 +38,10 @@ class OpenAILLM:
             model: Override the model name. Defaults to ``settings.llm_model``
                 if it looks like a GPT model, otherwise ``gpt-4o-mini``.
         """
-        configured = (model or settings.llm_model or "").lower()
-        self.model = model or (settings.llm_model if "gpt" in configured else "gpt-4o-mini")
+        # TODO Workshop 7 (stretch):
+        # - Resolve the model name. If ``settings.llm_model`` references a GPT
+        #   model, use it; otherwise fall back to ``"gpt-4o-mini"``.
+        raise NotImplementedError("Workshop 7 stretch: implement OpenAILLM.__init__")
 
     @cached_property
     def _openai_client(self):  # type: ignore[no-untyped-def]
@@ -53,14 +56,11 @@ class OpenAILLM:
         max_tokens: int = 1024,
     ) -> str:
         """Generate a single response for ``prompt`` using chat completions."""
-        response = self._openai_client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        text = response.choices[0].message.content or ""
-        return text.strip()
+        # TODO Workshop 7 (stretch):
+        # - Call ``self._openai_client.chat.completions.create(model=..., messages=[
+        #     {"role": "user", "content": prompt}], temperature=..., max_tokens=...)``.
+        # - Return ``response.choices[0].message.content`` (stripped).
+        raise NotImplementedError("Workshop 7 stretch: implement OpenAILLM.generate")
 
 
 class OpenAIEmbeddings:
@@ -76,7 +76,9 @@ class OpenAIEmbeddings:
             model: Override the embeddings model. Defaults to
                 ``text-embedding-3-small`` (1536-dim).
         """
-        self.model = model or self._DEFAULT_MODEL
+        # TODO Workshop 7 (stretch):
+        # - Store the model name on ``self``.
+        raise NotImplementedError("Workshop 7 stretch: implement OpenAIEmbeddings.__init__")
 
     @cached_property
     def _openai_client(self):  # type: ignore[no-untyped-def]
@@ -90,10 +92,8 @@ class OpenAIEmbeddings:
     @retry_with_backoff(retries=5, base_delay=1.0)
     def embed(self, texts: list[str]) -> list[list[float]]:
         """Embed a batch of strings using the OpenAI embeddings API."""
-        if not texts:
-            return []
-        response = self._openai_client.embeddings.create(
-            model=self.model,
-            input=texts,
-        )
-        return [list(item.embedding) for item in response.data]
+        # TODO Workshop 7 (stretch):
+        # - Guard against empty input.
+        # - Call ``self._openai_client.embeddings.create(model=..., input=texts)``.
+        # - Return ``[item.embedding for item in response.data]`` (each as a list).
+        raise NotImplementedError("Workshop 7 stretch: implement OpenAIEmbeddings.embed")

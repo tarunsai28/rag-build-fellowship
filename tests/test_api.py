@@ -1,4 +1,7 @@
-"""Integration tests for the FastAPI surface, using mock providers."""
+"""Integration tests for the FastAPI surface, using mock providers.
+
+Skipped in the starter — un-skip and complete in Workshop 7.
+"""
 
 from __future__ import annotations
 
@@ -29,7 +32,6 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
         "RAG stands for Retrieval-Augmented Generation.", encoding="utf-8"
     )
 
-    # Patch the factory functions where ``rag.api.main`` already imported them.
     monkeypatch.setattr(api_main, "get_llm", lambda: MockLLM("MOCK"))
     monkeypatch.setattr(api_main, "get_embeddings", lambda: MockEmbeddings())
 
@@ -38,6 +40,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
         yield client
 
 
+@pytest.mark.skip(reason="Workshop 7: GET /health smoke test.")
 def test_health_endpoint(client: TestClient) -> None:
     response = client.get("/health")
     assert response.status_code == 200
@@ -47,6 +50,7 @@ def test_health_endpoint(client: TestClient) -> None:
     assert "indexed_chunks" in body
 
 
+@pytest.mark.skip(reason="Workshop 7: ingest then ask round-trip.")
 def test_ingest_then_ask_round_trip(client: TestClient) -> None:
     ingest = client.post("/ingest", json={"clear": True})
     assert ingest.status_code == 200, ingest.text
@@ -61,21 +65,21 @@ def test_ingest_then_ask_round_trip(client: TestClient) -> None:
     assert answer["question"] == "What does RAG stand for?"
 
 
+@pytest.mark.skip(reason="Workshop 7: ask works against an empty store.")
 def test_ask_with_empty_store_still_works(client: TestClient) -> None:
-    """Asking a question against an empty store should not 500."""
-    # Skip ingest. The pipeline should produce *some* answer from no context.
     response = client.post("/ask", json={"question": "anything?"})
     assert response.status_code == 200
     assert "answer" in response.json()
 
 
+@pytest.mark.skip(reason="Workshop 7: ingest validates the path.")
 def test_ingest_validates_path(client: TestClient) -> None:
     response = client.post("/ingest", json={"path": "/no/such/path/exists"})
     assert response.status_code == 404
 
 
+@pytest.mark.skip(reason="Workshop 7: direct add() / retriever sanity.")
 def test_ingest_handles_extra_chunks(client: TestClient) -> None:
-    """Smoke check that direct add() also works (sanity, not via API)."""
     chunk = Chunk(text="RAG = Retrieval Augmented Generation", source="x", chunk_index=0)
     pipeline: RAGPipeline = client.app.state.pipeline
     retriever: Retriever = client.app.state.retriever

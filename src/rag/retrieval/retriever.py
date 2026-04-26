@@ -6,6 +6,8 @@ real-world features (metadata filters, reranking, hybrid search, query
 rewriting).
 """
 
+# ruff: noqa: F401  -- imports become used once Workshop 4 is implemented.
+
 from __future__ import annotations
 
 from typing import Any
@@ -43,6 +45,11 @@ class Retriever:
         Returns:
             Ranked list of chunks (most relevant first), possibly empty.
         """
-        if not query or not query.strip():
-            return []
-        return self.store.query(query, k=k or settings.top_k, where=filters)
+        # TODO Workshop 4:
+        # 1. Guard against empty queries (return []).
+        # 2. Resolve ``k`` (default: ``settings.top_k``).
+        # 3. Delegate to ``self.store.query(query, k=..., where=filters)``.
+        #
+        # Stretch: log the number of results retrieved; add a simple score
+        # threshold; integrate a reranker.
+        raise NotImplementedError("Workshop 4: implement Retriever.search")

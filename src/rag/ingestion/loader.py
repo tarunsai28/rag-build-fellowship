@@ -4,6 +4,8 @@ Workshop 2 deliverable. Students implement :meth:`DocumentLoader.load` and
 the per-format helpers.
 """
 
+# ruff: noqa: F401  -- imports become used once Workshop 2 is implemented.
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -37,68 +39,42 @@ class DocumentLoader:
         Raises:
             FileNotFoundError: If ``path`` does not exist.
         """
-        path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"No such file or directory: {path}")
-
-        if path.is_file():
-            doc = self._load_one(path)
-            return [doc] if doc is not None else []
-
-        # Directory — walk recursively, sorted for reproducibility.
-        documents: list[Document] = []
-        for child in sorted(path.rglob("*")):
-            if not child.is_file():
-                continue
-            if child.suffix.lower() not in _SUPPORTED_SUFFIXES:
-                continue
-            doc = self._load_one(child)
-            if doc is not None:
-                documents.append(doc)
-        log.info("Loaded %d documents from %s", len(documents), path)
-        return documents
+        # TODO Workshop 2:
+        # 1. Coerce ``path`` to ``pathlib.Path`` and raise ``FileNotFoundError`` if it
+        #    does not exist.
+        # 2. If it's a single file, dispatch to ``_load_one`` and return the result
+        #    wrapped in a list (or empty list if loading fails).
+        # 3. If it's a directory, walk it recursively (``path.rglob("*")``) sorted for
+        #    determinism. For every file whose extension is in ``_SUPPORTED_SUFFIXES``,
+        #    call ``_load_one`` and collect the results.
+        # 4. Return the collected list of Documents.
+        raise NotImplementedError("Workshop 2: implement DocumentLoader.load")
 
     def _load_one(self, path: Path) -> Document | None:
         """Dispatch to the right format-specific loader. Returns None on failure."""
-        suffix = path.suffix.lower()
-        try:
-            if suffix in _PDF_SUFFIXES:
-                return self._load_pdf(path)
-            if suffix in _TEXT_SUFFIXES:
-                return self._load_text(path)
-            log.warning("Skipping unsupported file type: %s", path)
-            return None
-        except Exception as exc:  # pragma: no cover - defensive
-            log.error("Failed to load %s: %s", path, exc)
-            return None
+        # TODO Workshop 2:
+        # - Look at ``path.suffix.lower()``.
+        # - If it's a PDF suffix, call ``_load_pdf``.
+        # - If it's a text/markdown suffix, call ``_load_text``.
+        # - Anything else: log a warning and return None.
+        # - Wrap the dispatch in try/except so a single broken file doesn't sink the
+        #   whole batch (log the error, return None).
+        raise NotImplementedError("Workshop 2: implement DocumentLoader._load_one")
 
     @staticmethod
     def _load_text(path: Path) -> Document:
         """Load a plain text or Markdown file as a single Document."""
-        text = path.read_text(encoding="utf-8", errors="replace")
-        return Document(
-            text=text,
-            source=str(path),
-            metadata={"format": path.suffix.lower().lstrip("."), "size_bytes": path.stat().st_size},
-        )
+        # TODO Workshop 2:
+        # - Read the file as UTF-8 (use ``errors="replace"`` so weird bytes don't crash).
+        # - Build a ``Document`` whose ``source`` is ``str(path)`` and whose metadata
+        #   includes the file extension and size in bytes.
+        raise NotImplementedError("Workshop 2: implement DocumentLoader._load_text")
 
     @staticmethod
     def _load_pdf(path: Path) -> Document:
         """Load a PDF as a single Document, joining pages with form-feeds."""
-        from pypdf import PdfReader
-
-        reader = PdfReader(str(path))
-        page_texts: list[str] = []
-        for page in reader.pages:
-            extracted = page.extract_text() or ""
-            page_texts.append(extracted)
-        text = "\n\f\n".join(page_texts)
-        return Document(
-            text=text,
-            source=str(path),
-            metadata={
-                "format": "pdf",
-                "page_count": len(reader.pages),
-                "size_bytes": path.stat().st_size,
-            },
-        )
+        # TODO Workshop 2:
+        # - Use ``pypdf.PdfReader`` to open the file.
+        # - Extract text from each page; join pages with "\n\f\n".
+        # - Build a Document whose metadata records ``page_count`` and ``size_bytes``.
+        raise NotImplementedError("Workshop 2: implement DocumentLoader._load_pdf")
