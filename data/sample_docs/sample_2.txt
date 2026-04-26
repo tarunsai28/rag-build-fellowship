@@ -1,0 +1,35 @@
+ChromaDB at a glance
+====================
+
+ChromaDB is an open-source vector database that runs as an in-process Python
+library or as a standalone server. The persistent client used in this project
+stores everything as files under a directory you choose (here: ".chroma/").
+
+Core concepts
+-------------
+
+Collection: a named bucket of (id, embedding, document, metadata) tuples.
+            Created with chromadb.PersistentClient(path=...).get_or_create_collection(name=...).
+
+Embedding:  a list of floats. Chroma does not care which model produced it,
+            so long as the dimension is consistent within a collection.
+
+Distance:   by default, Chroma uses L2. For most modern embedding models you
+            want cosine similarity, set with metadata={"hnsw:space": "cosine"}
+            at collection creation time.
+
+Where filter:  a dict of metadata constraints applied at query time, e.g.
+               where={"source": "manual.pdf"}. Filters are exact-match on
+               scalar fields by default; richer operators are documented in
+               the Chroma reference.
+
+Operational notes
+-----------------
+
+- The default HNSW index is in-memory; persistence happens via WAL writes to
+  disk. Restarting the process re-loads the index transparently.
+- Collections are eventually cheap to create — model your data in collections
+  per logical scope (per tenant, per corpus version) when it makes sense.
+- For >1M vectors, evaluate moving to a managed service (Pinecone, Weaviate,
+  pgvector). For teaching, prototypes, and modest corpora, a file-backed
+  Chroma store is more than enough.

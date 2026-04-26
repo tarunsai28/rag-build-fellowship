@@ -1,0 +1,21 @@
+"""Tests for the Retriever facade."""
+
+from __future__ import annotations
+
+from rag.retrieval.retriever import Retriever
+from rag.vectorstore.chroma_store import ChromaStore
+
+
+def test_retriever_returns_chunks(populated_store: ChromaStore) -> None:
+    results = Retriever(store=populated_store).search("RAG combines retrieval", k=2)
+    assert 1 <= len(results) <= 2
+    assert all(r.text for r in results)
+
+
+def test_retriever_empty_query_returns_empty(populated_store: ChromaStore) -> None:
+    assert Retriever(store=populated_store).search("   ") == []
+
+
+def test_retriever_respects_k(populated_store: ChromaStore) -> None:
+    results = Retriever(store=populated_store).search("anything", k=1)
+    assert len(results) == 1
