@@ -24,7 +24,7 @@ The codebase is designed to teach the concepts of RAG without forcing students t
 | Package manager | `uv` | Fast, single tool, cross-platform, handles Python install + venv + deps |
 | LLM (default) | Gemini 2.5 Flash-Lite | Free tier, no card, available in 200+ countries |
 | LLM (fallback) | Ollama (Llama 3.1 8B) | Local, offline, for blocked regions or privacy needs |
-| Embeddings (default) | Gemini `text-embedding-004` | Free, no separate setup |
+| Embeddings (default) | Gemini `gemini-embedding-2` | Free, no separate setup |
 | Embeddings (fallback) | `sentence-transformers/all-MiniLM-L6-v2` | Local, CPU-friendly, free |
 | Vector DB | ChromaDB | File-backed, zero ops, beginner-friendly |
 | API framework | FastAPI | Modern, type-safe, auto-generated docs |
@@ -152,7 +152,7 @@ class Settings(BaseSettings):
 
     # Model selection (provider-specific)
     llm_model: str = "gemini-2.5-flash-lite"
-    embeddings_model: str = "text-embedding-004"
+    embeddings_model: str = "gemini-embedding-2"
 
     # API keys (only the active provider's key needs to be set)
     gemini_api_key: str | None = None
@@ -626,7 +626,7 @@ Your task:
 Constraints:
 - Python 3.11+, uv for package management
 - Default LLM: Gemini 2.5 Flash-Lite via google-genai SDK
-- Default embeddings: Gemini text-embedding-004
+- Default embeddings: Gemini gemini-embedding-2
 - Vector DB: ChromaDB (file-backed, persisted to .chroma/)
 - API framework: FastAPI
 - All API calls wrapped with retry/backoff (see utils/retry.py spec)

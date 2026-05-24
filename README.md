@@ -77,7 +77,7 @@ Everything is `.env`-driven. The ones you'll touch most:
 | `LLM_PROVIDER` | `gemini` (default) / `openai` / `anthropic` / `ollama` |
 | `EMBEDDINGS_PROVIDER` | `gemini` (default) / `openai` / `ollama` / `local` |
 | `LLM_MODEL` | e.g. `gemini-2.5-flash-lite`, `gpt-4o-mini`, `claude-3-5-haiku-latest` |
-| `EMBEDDINGS_MODEL` | e.g. `text-embedding-004`, `text-embedding-3-small` |
+| `EMBEDDINGS_MODEL` | e.g. `gemini-embedding-2`, `text-embedding-3-small` |
 | `GEMINI_API_KEY` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Only the active provider's key needs to be set. |
 | `CHUNK_SIZE`, `CHUNK_OVERLAP`, `TOP_K` | Retrieval hyper-parameters. |
 

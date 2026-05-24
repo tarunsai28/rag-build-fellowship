@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     # ----- Model selection -----
     llm_model: str = "gemini-2.5-flash-lite"
-    embeddings_model: str = "text-embedding-004"
+    embeddings_model: str = "gemini-embedding-2"
 
     # ----- API keys (only the active provider's key needs to be set) -----
     gemini_api_key: str | None = None

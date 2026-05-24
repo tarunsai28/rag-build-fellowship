@@ -77,10 +77,25 @@ class GeminiLLM:
 
 
 class GeminiEmbeddings:
-    """Gemini ``text-embedding-004`` wrapped in the :class:`EmbeddingsProvider` shape."""
+    """Gemini embeddings wrapped in the :class:`EmbeddingsProvider` shape.
 
-    # text-embedding-004 returns 768-dim vectors.
-    _DIMENSION = 768
+    Defaults to ``gemini-embedding-2`` (the current AI-Studio-surfaced GA
+    embedding model). The legacy ``text-embedding-004`` was retired from
+    the ``v1beta`` API in 2025; if you have that name pinned in ``.env``,
+    embed calls fail with ``404 NOT_FOUND``. Update ``EMBEDDINGS_MODEL``
+    and wipe ``.chroma/`` before re-ingesting (the vector dimension
+    changes between models).
+
+    Note on batching: ``gemini-embedding-2``'s ``batchEmbedContents``
+    endpoint returns a *single combined* vector when handed a list of
+    inputs, rather than one vector per input. So we iterate one text per
+    call. This is slower than true batch embedding but is correct, and the
+    ``retry_with_backoff`` decorator handles rate-limit pushback from the
+    free tier.
+    """
+
+    # gemini-embedding-2 returns 3072-dim vectors by default.
+    _DIMENSION = 3072
 
     def __init__(self, model: str | None = None) -> None:
         """Construct a Gemini embeddings provider.
@@ -97,22 +112,30 @@ class GeminiEmbeddings:
 
     @property
     def dimension(self) -> int:
-        """Length of each embedding vector (768 for ``text-embedding-004``)."""
+        """Length of each embedding vector (3072 for ``gemini-embedding-2``)."""
         return self._DIMENSION
 
-    @retry_with_backoff(retries=5, base_delay=1.0)
     def embed(self, texts: list[str]) -> list[list[float]]:
-        """Embed a batch of strings."""
-        if not texts:
-            return []
+        """Embed a batch of strings, one API call per text.
+
+        The per-call retry policy is wrapped around :meth:`_embed_one` rather
+        than this method so that a transient 429 on chunk 30 of 47 only
+        retries that single chunk, not the whole batch.
+        """
+        return [self._embed_one(text) for text in texts]
+
+    @retry_with_backoff(retries=5, base_delay=1.0)
+    def _embed_one(self, text: str) -> list[float]:
+        """Embed a single string. Returns one vector."""
         result = self._genai_client.models.embed_content(
             model=self.model,
-            contents=texts,
+            contents=text,
         )
-        # The SDK returns either ``embeddings`` (list with .values) or, for a
-        # single-string call, a flat list — handle both shapes defensively.
-        if hasattr(result, "embeddings") and result.embeddings is not None:
-            return [list(e.values) for e in result.embeddings]
+        # The google-genai SDK exposes either ``embeddings`` (plural, list with
+        # one element here since we passed a single string) or ``embedding``
+        # (singular). Handle both shapes defensively across SDK versions.
+        if hasattr(result, "embeddings") and result.embeddings:
+            return list(result.embeddings[0].values)
         if hasattr(result, "embedding") and result.embedding is not None:
-            return [list(result.embedding.values)]
+            return list(result.embedding.values)
         raise RuntimeError(f"Unexpected embeddings response shape: {result!r}")

@@ -2,6 +2,29 @@
 
 Symptoms students hit most often, with the actual fix.
 
+## `404 NOT_FOUND` on `text-embedding-004` (or any retired model)
+
+Google retired `text-embedding-004` from the `v1beta` API in 2025 in
+favour of `gemini-embedding-2`. If your `.env` was created from an
+older `.env.example`, you'll see:
+
+```
+google.genai.errors.ClientError: 404 NOT_FOUND.
+models/text-embedding-004 is not found for API version v1beta...
+```
+
+Fix it in two steps — note the second one is required because the new
+model returns 3072-dim vectors and the old `.chroma/` collection is
+locked to the previous dimension:
+
+```bash
+sed -i '' 's/EMBEDDINGS_MODEL=text-embedding-004/EMBEDDINGS_MODEL=gemini-embedding-2/' .env
+rm -rf .chroma/
+uv run python scripts/ingest.py --clear
+```
+
+(`sed` invocation shown for macOS; on Linux drop the `''`.)
+
 ## `GEMINI_API_KEY is not set`
 
 You haven't created `.env`, or you created it but didn't paste the key.
