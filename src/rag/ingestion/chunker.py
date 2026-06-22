@@ -23,13 +23,6 @@ class Chunker:
         size: int | None = None,
         overlap: int | None = None,
     ) -> None:
-        """Construct a chunker.
-
-        Args:
-            size: Maximum characters per chunk. Defaults to ``settings.chunk_size``.
-            overlap: Characters of overlap between consecutive chunks.
-                Defaults to ``settings.chunk_overlap``. Must be < ``size``.
-        """
         self.size = size if size is not None else settings.chunk_size
         self.overlap = overlap if overlap is not None else settings.chunk_overlap
         if self.size <= 0:
@@ -46,24 +39,63 @@ class Chunker:
         Returns:
             All resulting chunks, in document → in-document order.
         """
-        # TODO Workshop 2:
-        # - For each document, call ``_chunk_one`` and accumulate the chunks.
-        # - Return the flat list.
-        raise NotImplementedError("Workshop 2: implement Chunker.chunk")
+        # Step 1: Start with an empty result list
+        # Step 2: For each document, generate its chunks and add them to the list
+        # Step 3: Return the complete flat list of all chunks
+        all_chunks: list[Chunk] = []
+        for doc in documents:
+            all_chunks.extend(self._chunk_one(doc))
+        return all_chunks
 
     def _chunk_one(self, doc: Document) -> list[Chunk]:
         """Chunk a single Document. Empty/whitespace docs return no chunks."""
-        # TODO Workshop 2:
-        # - If the document text is empty/whitespace-only, return [].
-        # - Walk the text in steps of ``self.size - self.overlap``, slicing out
-        #   ``self.size``-character windows.
-        # - Strip each piece; skip empties.
-        # - For each kept piece, build a Chunk with:
-        #     * ``chunk_index`` increasing from 0
-        #     * metadata copied from the parent doc, plus
-        #       ``chunk_index``, ``char_start``, ``char_end``.
-        # - Stop when the slice reaches the end of the text.
-        raise NotImplementedError("Workshop 2: implement Chunker._chunk_one")
+        # Step 1: Safely get the text — treat None as empty string
+        text = doc.text or ""
+
+        # Step 2: Skip documents that have no real content
+        if not text.strip():
+            return []
+
+        # Step 3: Calculate how far to move forward after each chunk
+        step = self.size - self.overlap
+        total_length = len(text)
+
+        result: list[Chunk] = []
+        chunk_index = 0
+        start = 0
+
+        while start < total_length:
+            # Step 4: Cap the end so we never slice past the text boundary
+            end = min(start + self.size, total_length)
+            piece = text[start:end].strip()
+
+            # Step 5: Only keep the chunk if it has actual content
+            if piece:
+                # Step 6: Copy parent metadata and add chunk-specific info
+                chunk_metadata = dict(doc.metadata)
+                chunk_metadata["chunk_index"] = chunk_index
+                chunk_metadata["char_start"] = start
+                chunk_metadata["char_end"] = end
+
+                # Step 7: Build the Chunk object and add to result
+                result.append(
+                    Chunk(
+                        text=piece,
+                        source=doc.source,
+                        chunk_index=chunk_index,
+                        metadata=chunk_metadata,
+                    )
+                )
+                chunk_index += 1
+
+            # Step 8: Stop if we've reached the end
+            if end >= total_length:
+                break
+
+            # Step 9: Move the window forward
+            start += step
+
+        return result
 
     @staticmethod
     def renumber(chunks: list[Chunk]) -> list[Chunk]:
