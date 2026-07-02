@@ -12,6 +12,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import chromadb
+
 from rag.config import settings
 from rag.ingestion.models import Chunk
 from rag.providers.base import EmbeddingsProvider
@@ -36,40 +38,45 @@ class ChromaStore:
         persist_dir: Path | None = None,
         collection_name: str | None = None,
     ) -> None:
-        """Construct a ChromaStore and ensure the collection exists.
+        # save the provider — we'll use it in add() and query()
+        self.embeddings = embeddings
 
-        Args:
-            embeddings: Provider used for both ``add`` and ``query``. Must produce
-                vectors of consistent dimension across calls.
-            persist_dir: Filesystem directory for the persistent store.
-                Defaults to ``settings.chroma_persist_dir``.
-            collection_name: Collection name within the store.
-                Defaults to ``settings.chroma_collection``.
-        """
-        # TODO Workshop 3:
-        # 1. Store the embeddings provider on ``self``.
-        # 2. Resolve ``persist_dir`` (default: ``settings.chroma_persist_dir``).
-        #    Make sure the directory exists (``mkdir(parents=True, exist_ok=True)``).
-        # 3. Resolve ``collection_name`` (default: ``settings.chroma_collection``).
-        # 4. Build a ``chromadb.PersistentClient(path=str(self.persist_dir))``.
-        # 5. Get-or-create the collection with ``metadata={"hnsw:space": "cosine"}``.
-        raise NotImplementedError("Workshop 3: implement ChromaStore.__init__")
+        # fall back to settings if not provided, then make sure folder exists
+        self.persist_dir = Path(persist_dir or settings.chroma_persist_dir)
+        self.persist_dir.mkdir(parents=True, exist_ok=True)
+
+        self.collection_name = collection_name or settings.chroma_collection
+
+        # connect to chroma on disk
+        self._client = chromadb.PersistentClient(path=str(self.persist_dir))
+
+        # get existing collection or create a new one with cosine similarity
+        self._collection = self._client.get_or_create_collection(
+            name=self.collection_name,
+            metadata={"hnsw:space": "cosine"},
+        )
 
     def add(self, chunks: list[Chunk]) -> None:
-        """Embed ``chunks`` and upsert them into the collection.
+        if not chunks:
+            return
 
-        Idempotent on chunk ``id`` (``"<source>::<chunk_index>"``): re-running
-        on the same chunks overwrites prior entries with the same id.
-        """
-        # TODO Workshop 3:
-        # 1. If ``chunks`` is empty, return early.
-        # 2. Build parallel lists of ids, documents (chunk text), metadatas
-        #    (use ``_scalarize`` so every value is a Chroma-allowed scalar; also
-        #    include the chunk's ``source`` in the metadata).
-        # 3. Call ``self.embeddings.embed(documents)`` to get vectors.
-        # 4. Upsert into the collection: ``collection.upsert(ids=..., documents=...,
-        #    embeddings=..., metadatas=...)``.
-        raise NotImplementedError("Workshop 3: implement ChromaStore.add")
+        ids = [c.id for c in chunks]
+        documents = [c.text for c in chunks]
+
+        # sanitize metadata values and make sure source is always present
+        metadatas = [
+            {**{k: _scalarize(v) for k, v in c.metadata.items()}, "source": c.source}
+            for c in chunks
+        ]
+
+        # embed all chunks then upsert so re-running doesn't create duplicates
+        vectors = self.embeddings.embed(documents)
+        self._collection.upsert(
+            ids=ids,
+            embeddings=vectors,
+            documents=documents,
+            metadatas=metadatas,
+        )
 
     def query(
         self,
@@ -77,35 +84,41 @@ class ChromaStore:
         k: int = 4,
         where: dict[str, Any] | None = None,
     ) -> list[Chunk]:
-        """Return the ``k`` chunks most similar to ``query_text``.
+        if not query_text or not query_text.strip():
+            return []
 
-        Args:
-            query_text: Natural-language query string.
-            k: Number of results to return.
-            where: Optional Chroma metadata filter (e.g. ``{"source": "manual.pdf"}``).
+        # embed the question using the same model we used at index time
+        query_vector = self.embeddings.embed([query_text])[0]
 
-        Returns:
-            List of matching :class:`Chunk` objects, ordered most-similar first.
-        """
-        # TODO Workshop 3:
-        # 1. Guard against empty/whitespace queries (return []).
-        # 2. Embed the query string via ``self.embeddings.embed([query_text])[0]``.
-        # 3. Call ``self._collection.query(query_embeddings=[vec], n_results=k, where=where)``.
-        # 4. The result has ``ids``, ``documents``, ``metadatas`` as lists of lists
-        #    (one per query). Pull index 0 from each.
-        # 5. Reconstruct ``Chunk`` objects, recovering ``source`` and ``chunk_index``
-        #    from the metadata.
-        raise NotImplementedError("Workshop 3: implement ChromaStore.query")
+        # chroma returns lists-of-lists (one per query) so we grab index 0
+        results = self._collection.query(
+            query_embeddings=[query_vector],
+            n_results=k,
+            where=where,
+        )
+
+        ids = results["ids"][0]
+        documents = results["documents"][0]
+        metadatas = results["metadatas"][0]
+
+        # rebuild Chunk objects from what chroma gave back
+        chunks = []
+        for i, (doc, meta) in enumerate(zip(documents, metadatas)):
+            chunks.append(Chunk(
+                text=doc,
+                source=meta.get("source", ""),
+                chunk_index=int(meta.get("chunk_index", i)),
+                metadata=meta,
+            ))
+        return chunks
 
     def count(self) -> int:
-        """Return the number of vectors currently stored."""
-        # TODO Workshop 3 (small):
-        # - Return ``int(self._collection.count())``.
-        raise NotImplementedError("Workshop 3: implement ChromaStore.count")
+        return int(self._collection.count())
 
     def clear(self) -> None:
-        """Drop and recreate the collection. Wipes all stored vectors."""
-        # TODO Workshop 3 (small):
-        # - Call ``self._client.delete_collection(self.collection_name)``.
-        # - Re-create the collection with the same cosine-space metadata.
-        raise NotImplementedError("Workshop 3: implement ChromaStore.clear")
+        # wipe the collection and start fresh
+        self._client.delete_collection(self.collection_name)
+        self._collection = self._client.get_or_create_collection(
+            name=self.collection_name,
+            metadata={"hnsw:space": "cosine"},
+        )
