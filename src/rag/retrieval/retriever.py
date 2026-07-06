@@ -45,11 +45,12 @@ class Retriever:
         Returns:
             Ranked list of chunks (most relevant first), possibly empty.
         """
-        # TODO Workshop 4:
-        # 1. Guard against empty queries (return []).
-        # 2. Resolve ``k`` (default: ``settings.top_k``).
-        # 3. Delegate to ``self.store.query(query, k=..., where=filters)``.
-        #
-        # Stretch: log the number of results retrieved; add a simple score
-        # threshold; integrate a reranker.
-        raise NotImplementedError("Workshop 4: implement Retriever.search")
+        # ignore empty or whitespace-only queries
+        if not query or not query.strip():
+            return []
+
+        # fall back to the configured default if k wasn't specified
+        top_k = k if k is not None else settings.top_k
+
+        # delegate to the vector store — it handles embedding and similarity search
+        return self.store.query(query, k=top_k, where=filters)
