@@ -45,13 +45,15 @@ def format_context(chunks: list[Chunk]) -> str:
 
     Numbering starts at 1 to match what students would naturally cite.
     """
-    # TODO Workshop 5:
-    # - If ``chunks`` is empty, return a placeholder string like
-    #   ``"(no context retrieved)"``.
-    # - Otherwise, render each chunk as a numbered block: a header line with
-    #   ``[i]`` plus source + chunk index, then the text on the next line.
-    # - Join blocks with a blank line.
-    raise NotImplementedError("Workshop 5: implement format_context")
+    if not chunks:
+        return "(no context retrieved)"
+
+    blocks = []
+    for i, chunk in enumerate(chunks, start=1):
+        header = f"[{i}] (source: {chunk.source}, chunk: {chunk.chunk_index})"
+        blocks.append(f"{header}\n{chunk.text}")
+
+    return "\n\n".join(blocks)
 
 
 class RAGPipeline:
@@ -71,9 +73,9 @@ class RAGPipeline:
             prompt_template: Prompt template with ``{context}`` and ``{question}``
                 placeholders. Defaults to :data:`RAG_PROMPT`.
         """
-        # TODO Workshop 5:
-        # - Store ``retriever``, ``llm``, and ``prompt_template`` on ``self``.
-        raise NotImplementedError("Workshop 5: implement RAGPipeline.__init__")
+        self.retriever = retriever
+        self.llm = llm
+        self.prompt_template = prompt_template
 
     def answer(
         self,
@@ -92,11 +94,19 @@ class RAGPipeline:
         Returns:
             An :class:`Answer` carrying the generated text plus the source chunks.
         """
-        # TODO Workshop 5:
-        # 1. Guard against empty/whitespace questions (return an Answer that says so).
-        # 2. Call ``self.retriever.search(question, k=k)`` to get the context chunks.
-        # 3. Build the prompt by formatting ``self.prompt_template`` with
-        #    ``context=format_context(chunks)`` and ``question=question``.
-        # 4. Call ``self.llm.generate(prompt, temperature=..., max_tokens=...)``.
-        # 5. Wrap the result in :class:`Answer` and return it.
-        raise NotImplementedError("Workshop 5: implement RAGPipeline.answer")
+        # don't bother hitting the LLM for empty questions
+        if not question or not question.strip():
+            return Answer(text="Please ask a question.", question=question)
+
+        # retrieve the most relevant chunks for the question
+        chunks = self.retriever.search(question, k=k)
+
+        # build the prompt — numbered context blocks + the question
+        prompt = self.prompt_template.format(
+            context=format_context(chunks),
+            question=question,
+        )
+
+        # call the LLM and wrap the result
+        text = self.llm.generate(prompt, temperature=temperature)
+        return Answer(text=text, sources=chunks, question=question)
