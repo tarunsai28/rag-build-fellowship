@@ -13,9 +13,12 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from rag.api.routes import router
 from rag.generation.pipeline import RAGPipeline
@@ -30,16 +33,15 @@ log = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Construct the pipeline once at startup, tear it down at shutdown."""
-    # build all the pieces we need
     embeddings = get_embeddings()
     llm = get_llm()
     store = ChromaStore(embeddings=embeddings)
     retriever = Retriever(store=store)
     pipeline = RAGPipeline(retriever=retriever, llm=llm)
 
-    # stash on app.state so route handlers can access them
     app.state.store = store
     app.state.pipeline = pipeline
+    app.state.retriever = retriever
 
     log.info("RAG pipeline ready")
     yield
@@ -57,7 +59,6 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # allow all origins in dev — lock down in production
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -66,13 +67,19 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(router)
+
+    static_dir = Path(__file__).parent.parent / "static"
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+        @app.get("/")
+        def root() -> FileResponse:
+            return FileResponse(str(static_dir / "index.html"))
+
     return app
 
 
 try:
     app: FastAPI | None = create_app()
-    """Module-level app instance used by ``uvicorn rag.api.main:app``."""
 except NotImplementedError:
-    # Starter: ``create_app`` is a Workshop 6 stub. Importing this module
-    # should not crash before Workshop 6 (e.g. during test collection).
     app = None

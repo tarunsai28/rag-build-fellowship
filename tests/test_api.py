@@ -38,9 +38,6 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
     app = create_app()
     with TestClient(app) as client:
         yield client
-
-
-@pytest.mark.skip(reason="Workshop 7: GET /health smoke test.")
 def test_health_endpoint(client: TestClient) -> None:
     response = client.get("/health")
     assert response.status_code == 200
@@ -48,9 +45,6 @@ def test_health_endpoint(client: TestClient) -> None:
     assert body["status"] == "ok"
     assert "llm_provider" in body
     assert "indexed_chunks" in body
-
-
-@pytest.mark.skip(reason="Workshop 7: ingest then ask round-trip.")
 def test_ingest_then_ask_round_trip(client: TestClient) -> None:
     ingest = client.post("/ingest", json={"clear": True})
     assert ingest.status_code == 200, ingest.text
@@ -63,22 +57,13 @@ def test_ingest_then_ask_round_trip(client: TestClient) -> None:
     answer = ask.json()
     assert answer["answer"]
     assert answer["question"] == "What does RAG stand for?"
-
-
-@pytest.mark.skip(reason="Workshop 7: ask works against an empty store.")
 def test_ask_with_empty_store_still_works(client: TestClient) -> None:
     response = client.post("/ask", json={"question": "anything?"})
     assert response.status_code == 200
     assert "answer" in response.json()
-
-
-@pytest.mark.skip(reason="Workshop 7: ingest validates the path.")
 def test_ingest_validates_path(client: TestClient) -> None:
     response = client.post("/ingest", json={"path": "/no/such/path/exists"})
     assert response.status_code == 404
-
-
-@pytest.mark.skip(reason="Workshop 7: direct add() / retriever sanity.")
 def test_ingest_handles_extra_chunks(client: TestClient) -> None:
     chunk = Chunk(text="RAG = Retrieval Augmented Generation", source="x", chunk_index=0)
     pipeline: RAGPipeline = client.app.state.pipeline
@@ -88,3 +73,4 @@ def test_ingest_handles_extra_chunks(client: TestClient) -> None:
     results = retriever.search("Retrieval Augmented Generation", k=1)
     assert results
     assert pipeline.llm is not None
+

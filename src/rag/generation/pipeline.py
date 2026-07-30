@@ -96,8 +96,7 @@ class RAGPipeline:
         """
         # don't bother hitting the LLM for empty questions
         if not question or not question.strip():
-            return Answer(text="Please ask a question.", question=question)
-
+           return Answer(text="empty question — nothing to answer.", question=question, sources=[])
         # retrieve the most relevant chunks for the question
         chunks = self.retriever.search(question, k=k)
 

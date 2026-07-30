@@ -69,6 +69,7 @@ class DocumentLoader:
             source=str(path),
             metadata={
                 "extension": path.suffix.lower(),
+                "format": path.suffix.lstrip(".").lower(),
                 "size_bytes": path.stat().st_size,
             },
         )
