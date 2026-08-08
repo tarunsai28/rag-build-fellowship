@@ -9,9 +9,10 @@ handler depends on the singleton :class:`RAGPipeline` constructed in the app's
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
 from rag.api.schemas import (
     AskRequest,
@@ -50,14 +51,12 @@ def ask(payload: AskRequest, request: Request) -> AskResponse:
     """Run the RAG pipeline against ``payload.question`` and return an answer."""
     pipeline = _state(request).pipeline
 
-    # run the full RAG loop
     result = pipeline.answer(
         payload.question,
         k=payload.top_k,
         temperature=payload.temperature,
     )
 
-    # convert each chunk into the Source schema
     sources = [
         Source(
             source=chunk.source,
@@ -80,19 +79,19 @@ def ingest(payload: IngestRequest, request: Request) -> IngestResponse:
     """Re-run ingestion against a directory or file path."""
     store = _state(request).store
 
-    # use payload path or fall back to the configured data directory
     target = Path(payload.path) if payload.path else Path(settings.data_dir)
 
     if not target.exists():
         raise HTTPException(status_code=404, detail=f"Path not found: {target}")
 
-    # optionally wipe before re-ingesting
     if payload.clear:
         store.clear()
 
-    # load, chunk, and index
     documents = DocumentLoader().load(target)
-    chunks = Chunker().chunk(documents)
+    chunks = Chunker(
+        size=payload.chunk_size or settings.chunk_size,
+        overlap=payload.chunk_overlap or settings.chunk_overlap,
+    ).chunk(documents)
     store.add(chunks)
 
     return IngestResponse(
@@ -101,3 +100,30 @@ def ingest(payload: IngestRequest, request: Request) -> IngestResponse:
         chunks_indexed=store.count(),
         path=str(target),
     )
+
+
+@router.post("/upload")
+async def upload(request: Request, file: UploadFile = File(...)) -> dict:
+    """Upload a document file and ingest it immediately."""
+    store = _state(request).store
+
+    target_dir = Path(settings.data_dir).resolve()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_path = target_dir / file.filename
+
+    with target_path.open("wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    documents = DocumentLoader().load(target_path)
+    chunks = Chunker(
+        size=settings.chunk_size,
+        overlap=settings.chunk_overlap,
+    ).chunk(documents)
+    store.add(chunks)
+
+    return {
+        "filename": file.filename,
+        "documents_loaded": len(documents),
+        "chunks_created": len(chunks),
+        "chunks_indexed": store.count(),
+    }

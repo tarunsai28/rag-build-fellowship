@@ -53,6 +53,18 @@ class IngestRequest(BaseModel):
         default=False,
         description="If True, wipe the collection before re-ingesting.",
     )
+    chunk_size: int | None = Field(
+        default=None,
+        ge=100,
+        le=2000,
+        description="Override chunk size. Defaults to settings.chunk_size.",
+    )
+    chunk_overlap: int | None = Field(
+        default=None,
+        ge=0,
+        le=200,
+        description="Override chunk overlap. Defaults to settings.chunk_overlap.",
+    )
 
 
 class IngestResponse(BaseModel):
